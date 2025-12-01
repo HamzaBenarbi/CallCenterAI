@@ -1,0 +1,17 @@
+# MLOps & Data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+models/*
+mlruns/
+.dvc/cache/
+*.pkl
+*.bin
+*.pt
+
+# Docker
+venv/
+__pycache__/
+*.pyc
+.env
