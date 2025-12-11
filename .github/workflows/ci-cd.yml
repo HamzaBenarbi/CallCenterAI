@@ -1,4 +1,4 @@
-name: CI/CD CallCenterAI
+name: CI/CD Simple – Test & Build
 
 on:
   push:
@@ -7,37 +7,36 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-test-build-scan:
+  test-build-scan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      security-events: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: pip
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff black pytest
+          pip install ruff black pytest  # pour lint et tests
 
-      - name: Lint with ruff + black
+      - name: Lint (ruff + black)
         run: |
           ruff check .
           black --check .
 
-      - name: Test with pytest
+      - name: Run tests (pytest)
         run: |
-          pytest -v || echo "No tests yet — skipping"
+          pytest -v || echo "No tests found – skipping"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -46,25 +45,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push Docker images
+      - name: Build Docker images (test)
         run: |
-          docker compose build --parallel
-          
-          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          
-          docker tag callcenterai-tfidf ghcr.io/$LOWER_REPO/tfidf:latest
-          docker tag callcenterai-transformer ghcr.io/$LOWER_REPO/transformer:latest
-          docker tag callcenterai-agent ghcr.io/$LOWER_REPO/agent:latest
-          
-          docker push ghcr.io/$LOWER_REPO/tfidf:latest
-          docker push ghcr.io/$LOWER_REPO/transformer:latest
-          docker push ghcr.io/$LOWER_REPO/agent:latest
+          docker compose build --no-cache
 
-      - name: Trivy vulnerability scanner
+      - name: Scan sécurité avec Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository }}/tfidf:latest
-          format: table
-          exit-code: "0"
-          severity: CRITICAL,HIGH,MEDIUM
+          image-ref: 'callcenterai-tfidf:latest'  # scan l'image locale
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
 
