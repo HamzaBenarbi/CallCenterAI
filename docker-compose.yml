@@ -1,0 +1,62 @@
+services:
+  tfidf:
+    build:
+      context: .
+      dockerfile: services/tfidf_service/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+
+  transformer:
+    build:
+      context: .
+      dockerfile: services/transformer_service/Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  agent:
+    build:
+      context: .
+      dockerfile: services/agent_service/Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - TFIDF_URL=http://host.docker.internal:8000/predict
+      - TRANSFORMER_URL=http://host.docker.internal:8001/predict
+
+  # ←←← MLFLOW AJOUTÉ ICI (exactement comme tu l’avais avant) ←←←
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    ports:
+      - "5000:5000"
+    command: mlflow server --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
+    volumes:
+      - mlflow_data:/mlflow
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+
+volumes:
+  mlflow_data:
